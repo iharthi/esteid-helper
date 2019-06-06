@@ -19,6 +19,13 @@ class IdentificationManager {
                 status: null,
                 finalize: null
             },
+
+            smartidEndpoints: {
+                start: null,
+                status: null,
+                finalize: null
+            },
+
             ...kwargs
         };
 
@@ -27,9 +34,10 @@ class IdentificationManager {
 
         this.idEndpoints = data.idEndpoints;
         this.midEndpoints = data.midEndpoints;
+        this.smartidEndpoints = data.smartidEndpoints;
     }
 
-    sign(signType, extraData, callBack) {
+    sign(signType, extraData) {
         return new Promise((resolve, reject) => {
             if (signType === IdentificationManager.SIGN_ID) {
                 this.__signHandleId(extraData, resolve, reject);
@@ -37,6 +45,10 @@ class IdentificationManager {
 
             else if (signType === IdentificationManager.SIGN_MOBILE) {
                 this.__signHandleMid(extraData, resolve, reject);
+            }
+
+            else if (signType === IdentificationManager.SIGN_SMARTID) {
+                this.__signHandleSmartid(extraData, resolve, reject);
             }
 
             else {
@@ -149,6 +161,20 @@ class IdentificationManager {
         });
     }
 
+    __signHandleSmartid(extraData, resolve, reject) {
+        request
+            .post(this.smartidEndpoints.start)
+            .type('form')
+            .send(extraData)
+            .end(function (err, res) {
+                if (res.ok && res.body.success) {
+                    resolve(res.body);
+                } else {
+                    reject(res.body);
+                }
+            });
+    }
+
     getError(err) {
         return this.idCardManager.getError(err);
     }
@@ -156,6 +182,7 @@ class IdentificationManager {
 
 IdentificationManager.SIGN_ID = 'id';
 IdentificationManager.SIGN_MOBILE = 'mid';
+IdentificationManager.SIGN_SMARTID = 'smartid';
 
 
 export default IdentificationManager;
