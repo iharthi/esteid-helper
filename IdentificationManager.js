@@ -37,6 +37,37 @@ class IdentificationManager {
         this.smartidEndpoints = data.smartidEndpoints;
     }
 
+    static checkStatus = (endpoint, extraData, resolve, reject) => {
+        const doRequest = () => {
+            request
+                .post(endpoint)
+                .type('form')
+                .send(extraData)
+                .end((err, res) => {
+                    if (res.ok) {
+                        if (!res.body.success) {
+                            if (res.body.pending) {
+                                // Still pending, try again in 1s
+                                setTimeout(() => doRequest(), 1000);
+                            } else {
+                                // Got a failure, lets notify the requester
+                                reject(res.body);
+                            }
+                        } else {
+                            // Process complete
+                            resolve(res.body);
+                        }
+
+                    } else {
+                        // Got a failure, lets notify the requester
+                        reject(res.body);
+                    }
+                });
+        };
+        return doRequest;
+    };
+
+
     sign(signType, extraData) {
         return new Promise((resolve, reject) => {
             if (signType === IdentificationManager.SIGN_ID) {
@@ -122,39 +153,8 @@ class IdentificationManager {
     midStatus(challengeId, extraData) {
         return new Promise((resolve, reject) => {
             if (challengeId) {
-                var doRequest = () => {
-                    request
-                        .post(this.midEndpoints.status)
-                        .type('form')
-                        .send(extraData)
-                        .end((err, res) => {
-                            if (res.ok) {
-                                if (!res.body.success) {
-                                    if (res.body.pending) {
-                                        // Still pending, try again in 1s
-                                        setTimeout(doRequest, 1000);
-                                    }
-
-                                    else {
-                                        // Got a failure, lets notify the requester
-                                        reject(res.body);
-                                    }
-                                }
-
-                                else {
-                                    // Process complete
-                                    resolve(res.body);
-                                }
-
-                            } else {
-                                // Got a failure, lets notify the requester
-                                reject(res.body);
-                            }
-                        });
-                };
-
-                doRequest();
-
+                const checkStatus = IdentificationManager.checkStatus(this.midEndpoints.status, extraData, resolve, reject);
+                checkStatus();
             } else {
                 reject("skipped");
             }
@@ -173,6 +173,17 @@ class IdentificationManager {
                     reject(res.body);
                 }
             });
+    }
+
+    smartidStatus(challengeId, extraData) {
+        return new Promise((resolve, reject) => {
+            if (challengeId) {
+                const checkStatus = IdentificationManager.checkStatus(this.smartidEndpoints.status, extraData, resolve, reject);
+                checkStatus();
+            } else {
+                reject("skipped");
+            }
+        });
     }
 
     getError(err) {
